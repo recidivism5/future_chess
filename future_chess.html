@@ -1,14 +1,39 @@
 <title>future chess</title>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans&family=Quicksand:wght@300;400&display=swap" rel="stylesheet">
+
 <style>
 	body {
 		margin: 0;
-		background-color: white;
+		background-color: black;
 	}
 	canvas {
 		display: block;  /* prevents scrollbar */
 		width: 100vw;
 		height: 100vh;
+	}
+
+	#overlay {
+		user-select: none;
+		color:white;
+		position: absolute; 
+		left: 50%;
+		top: 15%;
+	}
+
+	.button {
+		cursor:pointer;
+		font-size:24px;
+		display:inline-block;
+		border: 1px solid white;
+		padding:4px;
+	}
+	.button:hover {
+		color: black;
+		background-color: white;
+		border: 1px solid black;
 	}
 </style>
 <body>
@@ -17,6 +42,11 @@
 <script src="linalg.js"></script>
 
 <canvas id="canvas"></canvas>
+
+<div id="overlay">
+	<div style="font-size:120px;">future chess</div>
+	<div class="button">copy room link</div><div style="padding-top:4px;">send to a friend</div>
+</div>
 
 <script>
 	async function main(){
