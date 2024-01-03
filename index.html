@@ -46,6 +46,7 @@
 
 <script>
 	async function main(){
+		document.addEventListener('contextmenu', event => event.preventDefault()); //disable right click context menu
 		var canvas = document.querySelector("#canvas");
 		var gl = canvas.getContext("webgl2", {stencil : true});
 		if (!gl){
@@ -79,6 +80,13 @@
 		reflectedPieceShader.uAmbient = gl.getUniformLocation(reflectedPieceShader,"uAmbient");
 		reflectedPieceShader.uReflectivity = gl.getUniformLocation(reflectedPieceShader,"uReflectivity");
 
+		var cameraAngle = 0.0;
+		
+		onmousemove = (event) => {
+			if (event.buttons === 2){
+				cameraAngle -= 0.001*event.movementX;
+			}
+		};
 		var ambient = 0.75;
 		var reflectivity = 0.5;
 
@@ -132,8 +140,8 @@
 			gl.enable(gl.DEPTH_TEST);
 			gl.enable(gl.CULL_FACE);
 
-			var camPos = [7*Math.sin(0.5*now)+4,4,7*Math.cos(0.5*now)+4];
-			var vp = mat4_mul(mat4_persp(0.5*Math.PI,aspect,0.01,2000.0),mat4_lookat(camPos,[4,0,4],[0,1,0]));
+			var camPos = [7*Math.sin(cameraAngle)+4,7,7*Math.cos(cameraAngle)+4];
+			var vp = mat4_mul(mat4_persp(0.45*Math.PI,aspect,0.01,2000.0),mat4_lookat(camPos,[4,0,4],[0,1,0]));
 
 			gl.depthFunc(gl.LESS); // use the default depth test
 			function drawPieces(shader){
@@ -150,7 +158,7 @@
 						var cell = gameBoard.cells[z][x];
 						switch (cell.color){
 							case "white":
-								gl.uniform4fv(shader.uColor,new Float32Array([1.0,1.0,1.0,1.0]));
+								gl.uniform4fv(shader.uColor,new Float32Array([1.0,0.0,0.0,1.0]));
 								break;
 							case "black":
 								gl.uniform4fv(shader.uColor,new Float32Array([0.0,0.0,0.0,1.0]));
