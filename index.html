@@ -80,16 +80,6 @@
 		reflectedPieceShader.uAmbient = gl.getUniformLocation(reflectedPieceShader,"uAmbient");
 		reflectedPieceShader.uReflectivity = gl.getUniformLocation(reflectedPieceShader,"uReflectivity");
 
-		var cameraAngle = 0.0;
-		
-		onmousemove = (event) => {
-			if (event.buttons === 2){
-				cameraAngle -= 0.001*event.movementX;
-			}
-		};
-		var ambient = 0.75;
-		var reflectivity = 0.5;
-
 		var skyboxShader = await load_shader("skybox");
 		skyboxShader.uSkybox = gl.getUniformLocation(skyboxShader,"uSkybox");
 		skyboxShader.uInvVP = gl.getUniformLocation(skyboxShader,"uInvVP");
@@ -101,6 +91,7 @@
 		var pawn = await vao_from_obj("pawn");
 		var queen = await vao_from_obj("queen");
 		var rook = await vao_from_obj("rook");
+		var selector = await vao_from_obj("selector");
 
 		var skybox = load_cubemap("leafless_trees");
 
@@ -124,6 +115,23 @@
 		gl.enableVertexAttribArray(0);
 
 		gameBoard = new Board();
+
+		//tweakables:
+		var cameraAngle = 0.0;
+		var mousePos = [0,0];
+		onmousemove = (event) => {
+			if (event.buttons === 2){
+				cameraAngle -= 0.001*event.movementX;
+			}
+			mousePos = [event.clientX,event.clientY];
+		};
+		var ambient = 0.75;
+		var reflectivity = 0.5;
+		var whiteColor = [1.0,1.0,1.0,1.0];
+		var blackColor = [0.0,0.0,0.0,1.0];
+		var selectorPos = [0,0];
+		var selectorColor = [1.0,0.0,0.0,1.0];
+		/////////////////////////
 	
 		requestAnimationFrame(drawScene);
 
@@ -142,6 +150,19 @@
 
 			var camPos = [7*Math.sin(cameraAngle)+4,7,7*Math.cos(cameraAngle)+4];
 			var vp = mat4_mul(mat4_persp(0.45*Math.PI,aspect,0.01,2000.0),mat4_lookat(camPos,[4,0,4],[0,1,0]));
+			var invVP = mat4_invert(vp);
+
+			var ndcMousePos = [2.0*(mousePos[0]/gl.canvas.width-0.5),2.0*(1.0-mousePos[1]/gl.canvas.height-0.5)];
+			var mouseRay = vec3_norm(mat4_mul_vec3(invVP,[ndcMousePos[0],ndcMousePos[1],1.0],1.0));
+			var boardPoint = vec3_add(camPos,vec3_scale(mouseRay,(1.0-camPos[1])/mouseRay[1]));
+			selectorPos = [Math.floor(boardPoint[0]),Math.floor(boardPoint[2])];
+			var drawSelector = false;
+			if (
+				selectorPos[0] >= 0 && selectorPos[0] <= 7 && 
+				selectorPos[1] >= 0 && selectorPos[1] <= 7
+			){
+				drawSelector = true;
+			}
 
 			gl.depthFunc(gl.LESS); // use the default depth test
 			function drawPieces(shader){
@@ -151,17 +172,26 @@
 				gl.uniform3fv(shader.uCamPos,new Float32Array(camPos));
 				gl.uniform1i(shader.uSkybox,0);
 				gl.bindTexture(gl.TEXTURE_CUBE_MAP,skybox);
+				gl.uniformMatrix4fv(shader.uVP,false,new Float32Array(vp.flat()));
+
+				if (drawSelector){
+					gl.uniform3fv(shader.uTranslation,new Float32Array([0.5+selectorPos[0],1.0,0.5+selectorPos[1]]));
+					gl.uniform4fv(shader.uColor,new Float32Array(selectorColor));
+					gl.bindVertexArray(selector);
+					gl.drawArrays(gl.TRIANGLES,0,selector.vertexCount);
+				}
+
 				for (var z = 0; z < 8; z++){
 					for (var x = 0; x < 8; x++){
-						gl.uniform3fv(shader.uTranslation,new Float32Array([0.5+x,1,0.5+z]));
-						gl.uniformMatrix4fv(shader.uVP,false,new Float32Array(vp.flat()));
+						gl.uniform3fv(shader.uTranslation,new Float32Array([0.5+x,1.0,0.5+z]));
+						
 						var cell = gameBoard.cells[z][x];
 						switch (cell.color){
 							case "white":
-								gl.uniform4fv(shader.uColor,new Float32Array([1.0,0.0,0.0,1.0]));
+								gl.uniform4fv(shader.uColor,new Float32Array(whiteColor));
 								break;
 							case "black":
-								gl.uniform4fv(shader.uColor,new Float32Array([0.0,0.0,0.0,1.0]));
+								gl.uniform4fv(shader.uColor,new Float32Array(blackColor));
 								break;
 						}
 						switch (cell.type){
@@ -221,7 +251,7 @@
 			gl.depthFunc(gl.LEQUAL); // let our quad pass the depth test at 1.0
 			gl.useProgram(skyboxShader);
 			gl.uniform1i(skyboxShader.uSkybox,0);
-			gl.uniformMatrix4fv(skyboxShader.uInvVP,false,new Float32Array(mat4_invert(vp).flat()));
+			gl.uniformMatrix4fv(skyboxShader.uInvVP,false,new Float32Array(invVP.flat()));
 			gl.bindTexture(gl.TEXTURE_CUBE_MAP,skybox);
 			gl.bindVertexArray(screenQuadVAO);
 			gl.drawArrays(gl.TRIANGLES,0,6);

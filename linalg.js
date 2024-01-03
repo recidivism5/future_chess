@@ -52,6 +52,23 @@ function mat4_mul(a,b){
     return out;
 }
 
+function mat4_mul_vec4(m,v){
+    var out = [0.0,0.0,0.0,0.0];
+    for (var i = 0; i < 4; i++){
+        out[i] = m[0][i]*v[0] + m[1][i]*v[1] + m[2][i]*v[2] + m[3][i]*v[3];
+    }
+    return out;
+}
+
+function mat4_mul_vec3(m,v,w){
+    var r = mat4_mul_vec4(m,[v[0],v[1],v[2],w]);
+    return [r[0]/r[3],r[1]/r[3],r[2]/r[3]];
+}
+
+function vec3_add(a,b){
+    return [a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+}
+
 function vec3_sub(a, b){
     return [a[0]-b[0],a[1]-b[1],a[2]-b[2]];
 }
@@ -63,6 +80,10 @@ function vec3_norm(v){
     f[1] /= fMag;
     f[2] /= fMag;
     return f;
+}
+
+function vec3_scale(v,s){
+    return [v[0]*s,v[1]*s,v[2]*s];
 }
 
 function vec3_cross(a,b){
