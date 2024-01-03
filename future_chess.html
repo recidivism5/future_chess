@@ -58,6 +58,8 @@
 		boardShader.uVP = gl.getUniformLocation(boardShader,"uVP");
 		boardShader.uCamPos = gl.getUniformLocation(boardShader,"uCamPos");
 		boardShader.uSkybox = gl.getUniformLocation(boardShader,"uSkybox");
+		boardShader.uAmbient = gl.getUniformLocation(boardShader,"uAmbient");
+		boardShader.uReflectivity = gl.getUniformLocation(boardShader,"uReflectivity");
 
 		var pieceShader = await load_shader("piece");
 		pieceShader.uTranslation = gl.getUniformLocation(pieceShader,"uTranslation");
@@ -65,6 +67,8 @@
 		pieceShader.uCamPos = gl.getUniformLocation(pieceShader,"uCamPos");
 		pieceShader.uSkybox = gl.getUniformLocation(pieceShader,"uSkybox");
 		pieceShader.uColor = gl.getUniformLocation(pieceShader,"uColor");
+		pieceShader.uAmbient = gl.getUniformLocation(pieceShader,"uAmbient");
+		pieceShader.uReflectivity = gl.getUniformLocation(pieceShader,"uReflectivity");
 
 		var reflectedPieceShader = await load_shader("reflected_piece");
 		reflectedPieceShader.uTranslation = gl.getUniformLocation(reflectedPieceShader,"uTranslation");
@@ -72,6 +76,11 @@
 		reflectedPieceShader.uCamPos = gl.getUniformLocation(reflectedPieceShader,"uCamPos");
 		reflectedPieceShader.uSkybox = gl.getUniformLocation(reflectedPieceShader,"uSkybox");
 		reflectedPieceShader.uColor = gl.getUniformLocation(reflectedPieceShader,"uColor");
+		reflectedPieceShader.uAmbient = gl.getUniformLocation(reflectedPieceShader,"uAmbient");
+		reflectedPieceShader.uReflectivity = gl.getUniformLocation(reflectedPieceShader,"uReflectivity");
+
+		var ambient = 0.75;
+		var reflectivity = 0.5;
 
 		var skyboxShader = await load_shader("skybox");
 		skyboxShader.uSkybox = gl.getUniformLocation(skyboxShader,"uSkybox");
@@ -129,6 +138,8 @@
 			gl.depthFunc(gl.LESS); // use the default depth test
 			function drawPieces(shader){
 				gl.useProgram(shader);
+				gl.uniform1f(shader.uAmbient,ambient);
+				gl.uniform1f(shader.uReflectivity,reflectivity);
 				gl.uniform3fv(shader.uCamPos,new Float32Array(camPos));
 				gl.uniform1i(shader.uSkybox,0);
 				gl.bindTexture(gl.TEXTURE_CUBE_MAP,skybox);
@@ -188,6 +199,8 @@
 			gl.stencilFunc(gl.NOTEQUAL,1,0xff);
 			gl.stencilMask(0x00);
 			gl.useProgram(boardShader);
+			gl.uniform1f(boardShader.uAmbient,ambient);
+			gl.uniform1f(boardShader.uReflectivity,reflectivity);
 			gl.uniformMatrix4fv(boardShader.uVP,false,new Float32Array(vp.flat()));
 			gl.uniform3fv(boardShader.uCamPos,new Float32Array(camPos));
 			gl.uniform1i(boardShader.uSkybox,0);
