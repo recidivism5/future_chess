@@ -1,9 +1,5 @@
 <title>future chess</title>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans&family=Quicksand:wght@300;400&display=swap" rel="stylesheet">
-
 <style>
 	body {
 		margin: 0;
@@ -51,7 +47,7 @@
 <script>
 	async function main(){
 		var canvas = document.querySelector("#canvas");
-		var gl = canvas.getContext("webgl2");
+		var gl = canvas.getContext("webgl2", {stencil : true});
 		if (!gl){
 			console.error("WebGL 2 not available");
             document.body.innerHTML = "This example requires WebGL 2 which is unavailable on this system."
@@ -65,10 +61,17 @@
 
 		var pieceShader = await load_shader("piece");
 		pieceShader.uTranslation = gl.getUniformLocation(pieceShader,"uTranslation");
-		pieceShader.uMVP = gl.getUniformLocation(pieceShader,"uMVP");
+		pieceShader.uVP = gl.getUniformLocation(pieceShader,"uVP");
 		pieceShader.uCamPos = gl.getUniformLocation(pieceShader,"uCamPos");
 		pieceShader.uSkybox = gl.getUniformLocation(pieceShader,"uSkybox");
 		pieceShader.uColor = gl.getUniformLocation(pieceShader,"uColor");
+
+		var reflectedPieceShader = await load_shader("reflected_piece");
+		reflectedPieceShader.uTranslation = gl.getUniformLocation(reflectedPieceShader,"uTranslation");
+		reflectedPieceShader.uVP = gl.getUniformLocation(reflectedPieceShader,"uVP");
+		reflectedPieceShader.uCamPos = gl.getUniformLocation(reflectedPieceShader,"uCamPos");
+		reflectedPieceShader.uSkybox = gl.getUniformLocation(reflectedPieceShader,"uSkybox");
+		reflectedPieceShader.uColor = gl.getUniformLocation(reflectedPieceShader,"uColor");
 
 		var skyboxShader = await load_shader("skybox");
 		skyboxShader.uSkybox = gl.getUniformLocation(skyboxShader,"uSkybox");
@@ -115,15 +118,75 @@
 			var aspect = gl.canvas.width/gl.canvas.height;
 
 			gl.clearColor(1.0,0.0,0.0,1.0);
-			gl.clear(gl.COLOR_BUFFER_BIT);
+			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
 
 			gl.enable(gl.DEPTH_TEST);
 			gl.enable(gl.CULL_FACE);
 
-			var camPos = [7*Math.sin(now)+4,4,7*Math.cos(now)+4];
+			var camPos = [7*Math.sin(0.5*now)+4,4,7*Math.cos(0.5*now)+4];
 			var vp = mat4_mul(mat4_persp(0.5*Math.PI,aspect,0.01,2000.0),mat4_lookat(camPos,[4,0,4],[0,1,0]));
-			
+
 			gl.depthFunc(gl.LESS); // use the default depth test
+			function drawPieces(shader){
+				gl.useProgram(shader);
+				gl.uniform3fv(shader.uCamPos,new Float32Array(camPos));
+				gl.uniform1i(shader.uSkybox,0);
+				gl.bindTexture(gl.TEXTURE_CUBE_MAP,skybox);
+				for (var z = 0; z < 8; z++){
+					for (var x = 0; x < 8; x++){
+						gl.uniform3fv(shader.uTranslation,new Float32Array([0.5+x,1,0.5+z]));
+						gl.uniformMatrix4fv(shader.uVP,false,new Float32Array(vp.flat()));
+						var cell = gameBoard.cells[z][x];
+						switch (cell.color){
+							case "white":
+								gl.uniform4fv(shader.uColor,new Float32Array([1.0,1.0,1.0,1.0]));
+								break;
+							case "black":
+								gl.uniform4fv(shader.uColor,new Float32Array([0.0,0.0,0.0,1.0]));
+								break;
+						}
+						switch (cell.type){
+							case "bishop":
+								gl.bindVertexArray(bishop);
+								gl.drawArrays(gl.TRIANGLES,0,bishop.vertexCount);
+								break;
+							case "king":
+								gl.bindVertexArray(king);
+								gl.drawArrays(gl.TRIANGLES,0,king.vertexCount);
+								break;
+							case "knight":
+								gl.bindVertexArray(knight);
+								gl.drawArrays(gl.TRIANGLES,0,knight.vertexCount);
+								break;
+							case "pawn":
+								gl.bindVertexArray(pawn);
+								gl.drawArrays(gl.TRIANGLES,0,pawn.vertexCount);
+								break;
+							case "queen":
+								gl.bindVertexArray(queen);
+								gl.drawArrays(gl.TRIANGLES,0,queen.vertexCount);
+								break;
+							case "rook":
+								gl.bindVertexArray(rook);
+								gl.drawArrays(gl.TRIANGLES,0,rook.vertexCount);
+								break;
+						}
+					}
+				}
+			}
+
+			drawPieces(pieceShader);
+
+			gl.frontFace(gl.CW); //faces are reversed by inversion
+			gl.enable(gl.STENCIL_TEST);
+			gl.stencilOp(gl.KEEP,gl.KEEP,gl.REPLACE);
+			gl.stencilFunc(gl.ALWAYS,1,0xff);
+			gl.stencilMask(0xff);
+			drawPieces(reflectedPieceShader);
+			gl.frontFace(gl.CCW);
+
+			gl.stencilFunc(gl.NOTEQUAL,1,0xff);
+			gl.stencilMask(0x00);
 			gl.useProgram(boardShader);
 			gl.uniformMatrix4fv(boardShader.uVP,false,new Float32Array(vp.flat()));
 			gl.uniform3fv(boardShader.uCamPos,new Float32Array(camPos));
@@ -132,52 +195,7 @@
 			gl.bindVertexArray(board);
 			gl.drawArrays(gl.TRIANGLES,0,board.vertexCount);
 
-			gl.useProgram(pieceShader);
-			gl.uniform3fv(pieceShader.uCamPos,new Float32Array(camPos));
-			gl.uniform1i(pieceShader.uSkybox,0);
-			gl.bindTexture(gl.TEXTURE_CUBE_MAP,skybox);
-			for (var z = 0; z < 8; z++){
-				for (var x = 0; x < 8; x++){
-					var piecePos = [0.5+x,1,0.5+z];
-					gl.uniform3fv(pieceShader.uTranslation,new Float32Array(piecePos));
-					gl.uniformMatrix4fv(pieceShader.uMVP,false,new Float32Array(mat4_mul(vp,mat4_translate(piecePos)).flat()));
-					var cell = gameBoard.cells[z][x];
-					switch (cell.color){
-						case "white":
-							gl.uniform4fv(pieceShader.uColor,new Float32Array([1.0,1.0,1.0,1.0]));
-							break;
-						case "black":
-							gl.uniform4fv(pieceShader.uColor,new Float32Array([0.0,0.0,0.0,1.0]));
-							break;
-					}
-					switch (cell.type){
-						case "bishop":
-							gl.bindVertexArray(bishop);
-							gl.drawArrays(gl.TRIANGLES,0,bishop.vertexCount);
-							break;
-						case "king":
-							gl.bindVertexArray(king);
-							gl.drawArrays(gl.TRIANGLES,0,king.vertexCount);
-							break;
-						case "knight":
-							gl.bindVertexArray(knight);
-							gl.drawArrays(gl.TRIANGLES,0,knight.vertexCount);
-							break;
-						case "pawn":
-							gl.bindVertexArray(pawn);
-							gl.drawArrays(gl.TRIANGLES,0,pawn.vertexCount);
-							break;
-						case "queen":
-							gl.bindVertexArray(queen);
-							gl.drawArrays(gl.TRIANGLES,0,queen.vertexCount);
-							break;
-						case "rook":
-							gl.bindVertexArray(rook);
-							gl.drawArrays(gl.TRIANGLES,0,rook.vertexCount);
-							break;
-					}
-				}
-			}
+			gl.disable(gl.STENCIL_TEST);
 
 			gl.depthFunc(gl.LEQUAL); // let our quad pass the depth test at 1.0
 			gl.useProgram(skyboxShader);
