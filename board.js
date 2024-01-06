@@ -118,10 +118,10 @@ class Board {
                             var c = this.cells[4][dst[0]];
                             if (
                                 c.type == PAWN && 
-                                this.lastMove[0][0] == dst[0] && 
-                                this.lastMove[0][1] == 6 && 
-                                this.lastMove[1][0] == dst[0] && 
-                                this.lastMove[1][1] == 4
+                                this.lastMove.src[0] == dst[0] && 
+                                this.lastMove.src[1] == 6 && 
+                                this.lastMove.dst[0] == dst[0] && 
+                                this.lastMove.dst[1] == 4
                             ){
                                 return 4;
                             } else {
@@ -144,10 +144,10 @@ class Board {
                             var c = this.cells[3][dst[0]];
                             if (
                                 c.type == PAWN &&
-                                this.lastMove[0][0] == dst[0] &&
-                                this.lastMove[0][1] == 1 &&
-                                this.lastMove[1][0] == dst[0] &&
-                                this.lastMove[1][1] == 3
+                                this.lastMove.src[0] == dst[0] &&
+                                this.lastMove.src[1] == 1 &&
+                                this.lastMove.dst[0] == dst[0] &&
+                                this.lastMove.dst[1] == 3
                             ){
                                 return 3;
                             } else {
