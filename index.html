@@ -170,6 +170,9 @@
 		onmousedown = (event) => {
 			if (event.buttons === 1){
 				var dst = get_mouse_cell([event.clientX,event.clientY]);
+				if (!dst){
+					return;
+				}
 				if (srcPos){
 					var r = gameBoard.attemptMove(srcPos,dst);
 					if (r > 0){
@@ -182,7 +185,7 @@
 						checkSound.play();
 					}
 					srcPos = null;
-				} else {
+				} else if (gameBoard.cells[dst[1]][dst[0]].type && gameBoard.cells[dst[1]][dst[0]].color == gameBoard.toMove){
 					srcPos = dst;
 				}
 			}
@@ -229,7 +232,7 @@
 						gl.uniform3fv(shader.uTranslation,new Float32Array([0.5+x,1.0,0.5+z]));
 						
 						var cell = gameBoard.cells[z][x];
-						if (cell){
+						if (cell.type){
 							switch (cell.color){
 								case WHITE:
 									gl.uniform4fv(shader.uColor,new Float32Array(whiteColor));

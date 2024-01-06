@@ -2,30 +2,49 @@ var moveSound = new Audio("sounds/move.mp3");
 var captureSound = new Audio("sounds/capture.mp3");
 var checkSound = new Audio("sounds/check.mp3");
 
-
-const 
+const
     WHITE = 0,
     BLACK = 1,
-    PAWN = 2,
-    ROOK = 3,
-    KNIGHT = 4,
-    BISHOP = 5,
-    QUEEN = 6,
-    KING = 7;
+    EMPTY = 0,
+    PAWN = 1,
+    ROOK = 2,
+    KNIGHT = 3,
+    BISHOP = 4,
+    QUEEN = 5,
+    KING = 6;
 
 class Cell {
     constructor(type, color){
         this.type = type;
         this.color = color;
     }
+    copy(cell){
+        this.type = cell.type;
+        this.color = cell.color;
+    }
+};
+
+class Move {
+    constructor(src, dst){
+        this.src = src.slice();
+        this.dst = dst.slice();
+    }
+    copy(move){
+        this.src = move.src.slice();
+        this.dst = move.dst.slice();
+    }
 };
 
 class Board {
     constructor(){
         this.toMove = WHITE;
-        this.kingHasMoved = [false,false];//white, black
-        this.rookHasMoved = [[false,false],[false,false]];//white, black, low to high
-        this.lastMove = [[0,0],[0,0]];
+        this.lastMove = new Move([0,0],[0,0]);
+        this.whiteKingMoved = false;
+        this.blackKingMoved = false;
+        this.whiteRookMovedLow = false;
+        this.whiteRookMovedHigh = false;
+        this.blackRookMovedLow = false;
+        this.blackRookMovedHigh = false;
         this.cells = [
             [
                 new Cell(ROOK,  WHITE),
@@ -48,44 +67,44 @@ class Board {
                 new Cell(PAWN,WHITE),
             ],
             [
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
             ],
             [
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
             ],
             [
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
             ],
             [
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
+                new Cell(EMPTY,WHITE),
             ],
             [
                 new Cell(PAWN,BLACK),
@@ -111,13 +130,16 @@ class Board {
     }
     copy(board){
         this.toMove = board.toMove;
-        this.kingHasMoved = board.kingHasMoved.slice();//white, black
-        this.rookHasMoved = [board.rookHasMoved[0].slice(),board.rookHasMoved[1].slice()];//white, black, low to high
-        this.lastMove = [board.lastMove[0].slice(),board.lastMove[1].slice()]; //js experts: tell me if there's a better way to do this, I don't trust slice to copy internal array data
+        this.lastMove.copy(board.lastMove);
+        this.whiteKingMoved = board.whiteKingMoved;
+        this.blackKingMoved = board.blackKingMoved;
+        this.whiteRookMovedLow = board.whiteRookMovedLow;
+        this.whiteRookMovedHigh = board.whiteRookMovedHigh;
+        this.blackRookMovedLow = board.blackRookMovedLow;
+        this.blackRookMovedHigh = board.blackRookMovedHigh;
         for (var y = 0; y < 8; y++){
             for (var x = 0; x < 8; x++){
-                var c = board.cells[y][x];
-                this.cells[y][x] = c ? new Cell(c.type,c.color) : null;
+                this.cells[y][x].copy(board.cells[y][x]);
             }
         }
     }
@@ -128,9 +150,9 @@ class Board {
         var srcCell = this.cells[src[1]][src[0]];
         var dstCell = this.cells[dst[1]][dst[0]];
         if (
-            !srcCell || 
+            !srcCell.type || 
             (srcCell.color != this.toMove) ||
-            (dstCell && (srcCell.color == dstCell.color))
+            (dstCell.type && (srcCell.color == dstCell.color))
         ){
             return 0;
         }
@@ -142,15 +164,15 @@ class Board {
                         Math.abs(dst[0]-src[0]) > 1 ||
                         (src[1] == 1 && dst[1]-src[1] > 2) ||
                         (src[1] != 1 && dst[1]-src[1] > 1) ||
-                        (dst[0] == src[0] && dstCell)
+                        (dst[0] == src[0] && dstCell.type)
                     ){
                         return 0;
                     }
+                    console.log("joj");
                     if (dst[0] != src[0]){
-                        if (!dstCell){
+                        if (!dstCell.type){
                             var c = this.cells[4][dst[0]];
                             if (
-                                c && 
                                 c.type == PAWN && 
                                 this.lastMove[0][0] == dst[0] && 
                                 this.lastMove[0][1] == 6 && 
@@ -169,15 +191,14 @@ class Board {
                         Math.abs(src[0]-dst[0]) > 1 ||
                         (src[1] == 6 && src[1]-dst[1] > 2) ||
                         (src[1] != 6 && src[1]-dst[1] > 1) ||
-                        (dst[0] == src[0] && dstCell)
+                        (dst[0] == src[0] && dstCell.type)
                     ){
                         return 0;
                     }
                     if (dst[0] != src[0]){
-                        if (!dstCell){
+                        if (!dstCell.type){
                             var c = this.cells[3][dst[0]];
                             if (
-                                c &&
                                 c.type == PAWN &&
                                 this.lastMove[0][0] == dst[0] &&
                                 this.lastMove[0][1] == 1 &&
@@ -197,14 +218,14 @@ class Board {
                 if (dst[0] != src[0]){
                     var d = dst[0] > src[0] ? 1 : -1;
                     for (var i = src[0]+d; i != dst[0]; i += d){
-                        if (this.cells[src[1]][i]){
+                        if (this.cells[src[1]][i].type){
                             return 0;
                         }
                     }
                 } else {
                     var d = dst[1] > src[1] ? 1 : -1;
                     for (var i = src[1]+d; i != dst[1]; i += d){
-                        if (this.cells[i][src[0]]){
+                        if (this.cells[i][src[0]].type){
                             return 0;
                         }
                     }
@@ -231,7 +252,7 @@ class Board {
                 var x = src[0]+dx;
                 var y = src[1]+dy;
                 while (x != dst[0] || y != dst[1]){
-                    if (this.cells[y][x]){
+                    if (this.cells[y][x].type){
                         return 0;
                     }
                     x += dx;
@@ -250,7 +271,7 @@ class Board {
                 var x = src[0]+dx;
                 var y = src[1]+dy;
                 while (x != dst[0] || y != dst[1]){
-                    if (this.cells[y][x]){
+                    if (this.cells[y][x].type){
                         return 0;
                     }
                     x += dx;
@@ -259,9 +280,31 @@ class Board {
                 break;
             }
             case KING:{
-                if (Math.abs(dst[0]-src[0]) > 1 || Math.abs(dst[1]-src[1]) > 1){
-                    return 0;
-                }
+                /*if (this.toMove == WHITE){
+                    if (dst[1] == 0){
+                        if (!this.kingHasMoved[WHITE]){
+                            if (dst[0] == 2 && !this.rookHasMoved[WHITE][0]){
+
+                            } else if (dst[0] == 6 && !this.rookHasMoved[WHITE][1]){
+
+                            } else if (Math.abs(dst[0]-src[0]) > 1 || Math.abs(dst[1]-src[1]) > 1){
+                                return 0;
+                            }
+                        }
+                    }
+                } else {
+                    if (dst[1] == 7){
+                        if (!this.kingHasMoved[BLACK]){
+                            if (dst[0] == 2 && !this.rookHasMoved[BLACK][0]){
+
+                            } else if (dst[0] == 6 && !this.rookHasMoved[BLACK][1]){
+
+                            } else if (Math.abs(dst[0]-src[0]) > 1 || Math.abs(dst[1]-src[1]) > 1){
+                                return 0;
+                            }
+                        }
+                    }
+                }*/
                 var dx = dst[0] == src[0] ? 0 : dst[0] > src[0] ? 1 : -1;
                 var dy = dst[1] == src[1] ? 0 : dst[1] > src[1] ? 1 : -1;
                 if (dx && dy){
@@ -272,7 +315,7 @@ class Board {
                 var x = src[0]+dx;
                 var y = src[1]+dy;
                 while (x != dst[0] || y != dst[1]){
-                    if (this.cells[y][x]){
+                    if (this.cells[y][x].type){
                         return 0;
                     }
                     x += dx;
@@ -280,19 +323,23 @@ class Board {
                 }
             }
         }
-        if (dstCell){
+        if (dstCell.type){
             return 2;
         }
         return 1;
     }
     doMove(src, dst, r){
+        var capture = this.cells[dst[1]][dst[0]].type ? true : false;
         if (r == 3 || r == 4){
-            this.cells[r][dst[0]] = null; //en passant
+            this.cells[r][dst[0]].type = EMPTY; //en passant
+            capture = true;
         }
-        var srcCell = this.cells[src[1]][src[0]];
-        this.cells[dst[1]][dst[0]] = new Cell(srcCell.type, srcCell.color);
-        this.cells[src[1]][src[0]] = null;
-        this.lastMove = [[src[0],src[1]],[dst[0],dst[1]]];
+        this.cells[dst[1]][dst[0]].copy(this.cells[src[1]][src[0]]);
+        this.cells[src[1]][src[0]].type = EMPTY;
+        this.lastMove = new Move(src,dst);
+        return capture;
+    }
+    swapTurn(){
         this.toMove = this.toMove == WHITE ? BLACK : WHITE;
     }
     moveLegalChecked(src, dst){
@@ -301,6 +348,7 @@ class Board {
             var newBoard = new Board();
             newBoard.copy(this);
             newBoard.doMove(src,dst,r);
+            newBoard.swapTurn();
             var kx, ky;
             for (var y = 0; y < 8; y++){
                 for (var x = 0; x < 8; x++){
@@ -327,19 +375,11 @@ class Board {
         return r;
     }
     attemptMove(src, dst){
+        console.log(src,dst);
         var r = this.moveLegalChecked(src, dst);
         if (r != 0){
-            var capture = false;
+            var capture = this.doMove(src, dst);
             var check = false;
-            if (r == 3 || r == 4){
-                this.cells[r][dst[0]] = null; //en passant
-                capture = true;
-            }
-            var srcCell = this.cells[src[1]][src[0]];
-            this.cells[dst[1]][dst[0]] = new Cell(srcCell.type, srcCell.color);
-            this.cells[src[1]][src[0]] = null;
-            this.lastMove = [[src[0],src[1]],[dst[0],dst[1]]];
-
             //check for check:
             var kx, ky;
             for (var y = 0; y < 8; y++){
@@ -366,7 +406,7 @@ class Board {
                     }
                 }
             }
-            this.toMove = this.toMove == WHITE ? BLACK : WHITE;
+            this.swapTurn();
             moveSound.play();
             if (capture){
                 captureSound.play();
