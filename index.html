@@ -231,35 +231,35 @@
 						var cell = gameBoard.cells[z][x];
 						if (cell){
 							switch (cell.color){
-								case "white":
+								case WHITE:
 									gl.uniform4fv(shader.uColor,new Float32Array(whiteColor));
 									break;
-								case "black":
+								case BLACK:
 									gl.uniform4fv(shader.uColor,new Float32Array(blackColor));
 									break;
 							}
 							switch (cell.type){
-								case "bishop":
+								case BISHOP:
 									gl.bindVertexArray(bishop);
 									gl.drawArrays(gl.TRIANGLES,0,bishop.vertexCount);
 									break;
-								case "king":
+								case KING:
 									gl.bindVertexArray(king);
 									gl.drawArrays(gl.TRIANGLES,0,king.vertexCount);
 									break;
-								case "knight":
+								case KNIGHT:
 									gl.bindVertexArray(knight);
 									gl.drawArrays(gl.TRIANGLES,0,knight.vertexCount);
 									break;
-								case "pawn":
+								case PAWN:
 									gl.bindVertexArray(pawn);
 									gl.drawArrays(gl.TRIANGLES,0,pawn.vertexCount);
 									break;
-								case "queen":
+								case QUEEN:
 									gl.bindVertexArray(queen);
 									gl.drawArrays(gl.TRIANGLES,0,queen.vertexCount);
 									break;
-								case "rook":
+								case ROOK:
 									gl.bindVertexArray(rook);
 									gl.drawArrays(gl.TRIANGLES,0,rook.vertexCount);
 									break;

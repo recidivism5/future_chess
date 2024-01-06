@@ -2,6 +2,17 @@ var moveSound = new Audio("sounds/move.mp3");
 var captureSound = new Audio("sounds/capture.mp3");
 var checkSound = new Audio("sounds/check.mp3");
 
+
+const 
+    WHITE = 0,
+    BLACK = 1,
+    PAWN = 2,
+    ROOK = 3,
+    KNIGHT = 4,
+    BISHOP = 5,
+    QUEEN = 6,
+    KING = 7;
+
 class Cell {
     constructor(type, color){
         this.type = type;
@@ -11,40 +22,30 @@ class Cell {
 
 class Board {
     constructor(){
-        this.toMove = "white";
+        this.toMove = WHITE;
         this.kingHasMoved = [false,false];//white, black
         this.rookHasMoved = [[false,false],[false,false]];//white, black, low to high
         this.lastMove = [[0,0],[0,0]];
         this.cells = [
             [
-                new Cell("rook",  "white"),
-                new Cell("knight","white"),
-                new Cell("bishop","white"),
-                new Cell("queen", "white"),
-                new Cell("king",  "white"),
-                new Cell("bishop","white"),
-                new Cell("knight","white"),
-                new Cell("rook",  "white"),
+                new Cell(ROOK,  WHITE),
+                new Cell(KNIGHT,WHITE),
+                new Cell(BISHOP,WHITE),
+                new Cell(QUEEN, WHITE),
+                new Cell(KING,  WHITE),
+                new Cell(BISHOP,WHITE),
+                new Cell(KNIGHT,WHITE),
+                new Cell(ROOK,  WHITE),
             ],
             [
-                new Cell("pawn","white"),
-                new Cell("pawn","white"),
-                new Cell("pawn","white"),
-                new Cell("pawn","white"),
-                new Cell("pawn","white"),
-                new Cell("pawn","white"),
-                new Cell("pawn","white"),
-                new Cell("pawn","white"),
-            ],
-            [
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
+                new Cell(PAWN,WHITE),
+                new Cell(PAWN,WHITE),
+                new Cell(PAWN,WHITE),
+                new Cell(PAWN,WHITE),
+                new Cell(PAWN,WHITE),
+                new Cell(PAWN,WHITE),
+                new Cell(PAWN,WHITE),
+                new Cell(PAWN,WHITE),
             ],
             [
                 null,
@@ -77,24 +78,34 @@ class Board {
                 null,
             ],
             [
-                new Cell("pawn","black"),
-                new Cell("pawn","black"),
-                new Cell("pawn","black"),
-                new Cell("pawn","black"),
-                new Cell("pawn","black"),
-                new Cell("pawn","black"),
-                new Cell("pawn","black"),
-                new Cell("pawn","black"),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
             ],
             [
-                new Cell("rook",  "black"),
-                new Cell("knight","black"),
-                new Cell("bishop","black"),
-                new Cell("queen", "black"),
-                new Cell("king",  "black"),
-                new Cell("bishop","black"),
-                new Cell("knight","black"),
-                new Cell("rook",  "black"),
+                new Cell(PAWN,BLACK),
+                new Cell(PAWN,BLACK),
+                new Cell(PAWN,BLACK),
+                new Cell(PAWN,BLACK),
+                new Cell(PAWN,BLACK),
+                new Cell(PAWN,BLACK),
+                new Cell(PAWN,BLACK),
+                new Cell(PAWN,BLACK),
+            ],
+            [
+                new Cell(ROOK,  BLACK),
+                new Cell(KNIGHT,BLACK),
+                new Cell(BISHOP,BLACK),
+                new Cell(QUEEN, BLACK),
+                new Cell(KING,  BLACK),
+                new Cell(BISHOP,BLACK),
+                new Cell(KNIGHT,BLACK),
+                new Cell(ROOK,  BLACK),
             ],
         ];
     }
@@ -124,8 +135,8 @@ class Board {
             return 0;
         }
         switch (srcCell.type){
-            case "pawn": {
-                if (srcCell.color == "white"){
+            case PAWN: {
+                if (srcCell.color == WHITE){
                     if (
                         dst[1] <= src[1] ||
                         Math.abs(dst[0]-src[0]) > 1 ||
@@ -140,7 +151,7 @@ class Board {
                             var c = this.cells[4][dst[0]];
                             if (
                                 c && 
-                                c.type == "pawn" && 
+                                c.type == PAWN && 
                                 this.lastMove[0][0] == dst[0] && 
                                 this.lastMove[0][1] == 6 && 
                                 this.lastMove[1][0] == dst[0] && 
@@ -167,7 +178,7 @@ class Board {
                             var c = this.cells[3][dst[0]];
                             if (
                                 c &&
-                                c.type == "pawn" &&
+                                c.type == PAWN &&
                                 this.lastMove[0][0] == dst[0] &&
                                 this.lastMove[0][1] == 1 &&
                                 this.lastMove[1][0] == dst[0] &&
@@ -182,7 +193,7 @@ class Board {
                 }
                 break;
             }
-            case "rook":{
+            case ROOK:{
                 if (dst[0] != src[0]){
                     var d = dst[0] > src[0] ? 1 : -1;
                     for (var i = src[0]+d; i != dst[0]; i += d){
@@ -200,7 +211,7 @@ class Board {
                 }
                 break;
             }
-            case "knight":{
+            case KNIGHT:{
                 if (
                     (Math.abs(dst[0]-src[0]) == 1 && Math.abs(dst[1]-src[1]) == 2) ||
                     (Math.abs(dst[0]-src[0]) == 2 && Math.abs(dst[1]-src[1]) == 1)
@@ -211,7 +222,7 @@ class Board {
                 }
                 break;
             }
-            case "bishop":{
+            case BISHOP:{
                 if (Math.abs(dst[0]-src[0]) != Math.abs(dst[1]-src[1])){
                     return 0;
                 }
@@ -228,7 +239,7 @@ class Board {
                 }
                 break;
             }
-            case "queen":{
+            case QUEEN:{
                 var dx = dst[0] == src[0] ? 0 : dst[0] > src[0] ? 1 : -1;
                 var dy = dst[1] == src[1] ? 0 : dst[1] > src[1] ? 1 : -1;
                 if (dx && dy){
@@ -247,7 +258,7 @@ class Board {
                 }
                 break;
             }
-            case "king":{
+            case KING:{
                 if (Math.abs(dst[0]-src[0]) > 1 || Math.abs(dst[1]-src[1]) > 1){
                     return 0;
                 }
@@ -282,7 +293,7 @@ class Board {
         this.cells[dst[1]][dst[0]] = new Cell(srcCell.type, srcCell.color);
         this.cells[src[1]][src[0]] = null;
         this.lastMove = [[src[0],src[1]],[dst[0],dst[1]]];
-        this.toMove = this.toMove == "white" ? "black" : "white";
+        this.toMove = this.toMove == WHITE ? BLACK : WHITE;
     }
     moveLegalChecked(src, dst){
         var r = this.moveLegal(src, dst);
@@ -294,7 +305,7 @@ class Board {
             for (var y = 0; y < 8; y++){
                 for (var x = 0; x < 8; x++){
                     var k = newBoard.cells[y][x];
-                    if (k && k.color != newBoard.toMove && k.type == "king"){
+                    if (k && k.color != newBoard.toMove && k.type == KING){
                         ky = y;
                         kx = x;
                         y = 8;
@@ -334,7 +345,7 @@ class Board {
             for (var y = 0; y < 8; y++){
                 for (var x = 0; x < 8; x++){
                     var k = this.cells[y][x];
-                    if (k && k.color != this.toMove && k.type == "king"){
+                    if (k && k.color != this.toMove && k.type == KING){
                         ky = y;
                         kx = x;
                         y = 8;
@@ -355,7 +366,7 @@ class Board {
                     }
                 }
             }
-            this.toMove = this.toMove == "white" ? "black" : "white";
+            this.toMove = this.toMove == WHITE ? BLACK : WHITE;
             moveSound.play();
             if (capture){
                 captureSound.play();
