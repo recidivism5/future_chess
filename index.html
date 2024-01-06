@@ -174,16 +174,7 @@
 					return;
 				}
 				if (srcPos){
-					var r = gameBoard.attemptMove(srcPos,dst);
-					if (r > 0){
-						if (r > 1){
-							captureSound.play();
-						} else {
-							moveSound.play();
-						}
-					} else if (r < 0){
-						checkSound.play();
-					}
+					gameBoard.attemptMove(srcPos,dst);
 					srcPos = null;
 				} else if (gameBoard.cells[dst[1]][dst[0]].type && gameBoard.cells[dst[1]][dst[0]].color == gameBoard.toMove){
 					srcPos = dst;

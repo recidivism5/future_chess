@@ -36,6 +36,25 @@ class Move {
 };
 
 class Board {
+    addRow(type, color){
+        var r = [];
+        for (var x = 0; x < 8; x++){
+            r.push(new Cell(type,color));
+        }
+        this.cells.push(r);
+    }
+    addHomeRow(color){
+        this.cells.push([
+            new Cell(ROOK,  color),
+            new Cell(KNIGHT,color),
+            new Cell(BISHOP,color),
+            new Cell(QUEEN, color),
+            new Cell(KING,  color),
+            new Cell(BISHOP,color),
+            new Cell(KNIGHT,color),
+            new Cell(ROOK,  color),
+        ]);
+    }
     constructor(){
         this.toMove = WHITE;
         this.lastMove = new Move([0,0],[0,0]);
@@ -45,88 +64,14 @@ class Board {
         this.whiteRookMovedHigh = false;
         this.blackRookMovedLow = false;
         this.blackRookMovedHigh = false;
-        this.cells = [
-            [
-                new Cell(ROOK,  WHITE),
-                new Cell(KNIGHT,WHITE),
-                new Cell(BISHOP,WHITE),
-                new Cell(QUEEN, WHITE),
-                new Cell(KING,  WHITE),
-                new Cell(BISHOP,WHITE),
-                new Cell(KNIGHT,WHITE),
-                new Cell(ROOK,  WHITE),
-            ],
-            [
-                new Cell(PAWN,WHITE),
-                new Cell(PAWN,WHITE),
-                new Cell(PAWN,WHITE),
-                new Cell(PAWN,WHITE),
-                new Cell(PAWN,WHITE),
-                new Cell(PAWN,WHITE),
-                new Cell(PAWN,WHITE),
-                new Cell(PAWN,WHITE),
-            ],
-            [
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-            ],
-            [
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-            ],
-            [
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-            ],
-            [
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-                new Cell(EMPTY,WHITE),
-            ],
-            [
-                new Cell(PAWN,BLACK),
-                new Cell(PAWN,BLACK),
-                new Cell(PAWN,BLACK),
-                new Cell(PAWN,BLACK),
-                new Cell(PAWN,BLACK),
-                new Cell(PAWN,BLACK),
-                new Cell(PAWN,BLACK),
-                new Cell(PAWN,BLACK),
-            ],
-            [
-                new Cell(ROOK,  BLACK),
-                new Cell(KNIGHT,BLACK),
-                new Cell(BISHOP,BLACK),
-                new Cell(QUEEN, BLACK),
-                new Cell(KING,  BLACK),
-                new Cell(BISHOP,BLACK),
-                new Cell(KNIGHT,BLACK),
-                new Cell(ROOK,  BLACK),
-            ],
-        ];
+        this.cells = [];
+        this.addHomeRow(WHITE);
+        this.addRow(PAWN,WHITE);
+        for (var i = 0; i < 4; i++){
+            this.addRow(EMPTY,WHITE);
+        }
+        this.addRow(PAWN,BLACK);
+        this.addHomeRow(BLACK);
     }
     copy(board){
         this.toMove = board.toMove;
@@ -168,7 +113,6 @@ class Board {
                     ){
                         return 0;
                     }
-                    console.log("joj");
                     if (dst[0] != src[0]){
                         if (!dstCell.type){
                             var c = this.cells[4][dst[0]];
@@ -215,6 +159,9 @@ class Board {
                 break;
             }
             case ROOK:{
+                if (dst[0] != src[0] && dst[1] != src[1]){
+                    return 0;
+                }
                 if (dst[0] != src[0]){
                     var d = dst[0] > src[0] ? 1 : -1;
                     for (var i = src[0]+d; i != dst[0]; i += d){
@@ -280,31 +227,30 @@ class Board {
                 break;
             }
             case KING:{
-                /*if (this.toMove == WHITE){
+                if (this.toMove == WHITE){
                     if (dst[1] == 0){
-                        if (!this.kingHasMoved[WHITE]){
-                            if (dst[0] == 2 && !this.rookHasMoved[WHITE][0]){
-
-                            } else if (dst[0] == 6 && !this.rookHasMoved[WHITE][1]){
-
-                            } else if (Math.abs(dst[0]-src[0]) > 1 || Math.abs(dst[1]-src[1]) > 1){
-                                return 0;
+                        if (!this.whiteKingMoved){
+                            if (dst[0] == 2 && !this.whiteRookMovedLow && !this.cells[0][1].type && !this.cells[0][2].type && !this.cells[0][3].type){
+                                return 5; //castle white low
+                            } else if (dst[0] == 6 && !this.whiteRookMovedHigh && !this.cells[0][5].type && !this.cells[0][6].type){
+                                return 6; //castle white high
                             }
                         }
                     }
                 } else {
                     if (dst[1] == 7){
-                        if (!this.kingHasMoved[BLACK]){
-                            if (dst[0] == 2 && !this.rookHasMoved[BLACK][0]){
-
-                            } else if (dst[0] == 6 && !this.rookHasMoved[BLACK][1]){
-
-                            } else if (Math.abs(dst[0]-src[0]) > 1 || Math.abs(dst[1]-src[1]) > 1){
-                                return 0;
+                        if (!this.blackKingMoved){
+                            if (dst[0] == 2 && !this.blackRookMovedLow && !this.cells[7][1].type && !this.cells[7][2].type && !this.cells[7][3].type){
+                                return 7; //castle black low
+                            } else if (dst[0] == 6 && !this.blackRookMovedHigh && !this.cells[7][5].type && !this.cells[7][6].type){
+                                return 8; //castle black high
                             }
                         }
                     }
-                }*/
+                }
+                if (Math.abs(dst[0]-src[0]) > 1 || Math.abs(dst[1]-src[1]) > 1){
+                    return 0;
+                }
                 var dx = dst[0] == src[0] ? 0 : dst[0] > src[0] ? 1 : -1;
                 var dy = dst[1] == src[1] ? 0 : dst[1] > src[1] ? 1 : -1;
                 if (dx && dy){
@@ -329,10 +275,25 @@ class Board {
         return 1;
     }
     doMove(src, dst, r){
-        var capture = this.cells[dst[1]][dst[0]].type ? true : false;
-        if (r == 3 || r == 4){
-            this.cells[r][dst[0]].type = EMPTY; //en passant
-            capture = true;
+        var capture = false;
+        switch (r){
+            case 2:{
+                capture = true;
+                break;
+            }
+            case 3: case 4:{
+                this.cells[r][dst[0]].type = EMPTY; //en passant
+                capture = true;
+                break;
+            }
+            case 5: case 6: case 7: case 8:{
+                var p = (r-5) % 2;
+                var rookX = p ? 7 : 0;
+                var xd = p ? -1 : 1;
+                this.cells[dst[1]][dst[0]+xd].copy(this.cells[dst[1]][rookX]);
+                this.cells[dst[1]][rookX].type = EMPTY;
+                break;
+            }
         }
         this.cells[dst[1]][dst[0]].copy(this.cells[src[1]][src[0]]);
         this.cells[src[1]][src[0]].type = EMPTY;
@@ -342,70 +303,56 @@ class Board {
     swapTurn(){
         this.toMove = this.toMove == WHITE ? BLACK : WHITE;
     }
-    moveLegalChecked(src, dst){
-        var r = this.moveLegal(src, dst);
-        if (r != 0){
-            var newBoard = new Board();
-            newBoard.copy(this);
-            newBoard.doMove(src,dst,r);
-            newBoard.swapTurn();
-            var kx, ky;
-            for (var y = 0; y < 8; y++){
-                for (var x = 0; x < 8; x++){
-                    var k = newBoard.cells[y][x];
-                    if (k && k.color != newBoard.toMove && k.type == KING){
-                        ky = y;
-                        kx = x;
-                        y = 8;
-                        x = 8;
-                    }
+    otherSideInCheck(){
+        var kx, ky;
+        for (var y = 0; y < 8; y++){
+            for (var x = 0; x < 8; x++){
+                var k = this.cells[y][x];
+                if (k && k.color != this.toMove && k.type == KING){
+                    ky = y;
+                    kx = x;
+                    y = 8;
+                    x = 8;
                 }
             }
-            for (var y = 0; y < 8; y++){
-                for (var x = 0; x < 8; x++){
-                    var c = newBoard.cells[y][x];
-                    if (c && c.color == newBoard.toMove){
-                        if (newBoard.moveLegal([x,y],[kx,ky])){
-                            return 0;
-                        }
+        }
+        for (var y = 0; y < 8; y++){
+            for (var x = 0; x < 8; x++){
+                var c = this.cells[y][x];
+                if (c && c.color == this.toMove){
+                    if (this.moveLegal([x,y],[kx,ky])){
+                        return true;
                     }
                 }
             }
         }
+        return false;
+    }
+    moveLegalChecked(src,dst){
+        var r = this.moveLegal(src,dst);
+        if (r != 0){
+            var newBoard = new Board();
+            if (r > 4){
+                var dx = (r-5) % 2 ? 1 : -1;
+                var nr = this.moveLegalChecked(src,[src[0]+dx,src[1]]);
+                if (!nr){
+                    return nr;
+                }
+            }
+            newBoard.copy(this);
+            newBoard.doMove(src,dst,r);
+            newBoard.swapTurn();
+            if (newBoard.otherSideInCheck()){
+                return 0;
+            }
+        }
         return r;
     }
-    attemptMove(src, dst){
-        console.log(src,dst);
-        var r = this.moveLegalChecked(src, dst);
+    attemptMove(src,dst){
+        var r = this.moveLegalChecked(src,dst);
         if (r != 0){
-            var capture = this.doMove(src, dst);
-            var check = false;
-            //check for check:
-            var kx, ky;
-            for (var y = 0; y < 8; y++){
-                for (var x = 0; x < 8; x++){
-                    var k = this.cells[y][x];
-                    if (k && k.color != this.toMove && k.type == KING){
-                        ky = y;
-                        kx = x;
-                        y = 8;
-                        x = 8;
-                    }
-                }
-            }
-            for (var y = 0; y < 8; y++){
-                for (var x = 0; x < 8; x++){
-                    var c = this.cells[y][x];
-                    if (c && c.color == this.toMove){
-                        if (this.moveLegal([x,y],[kx,ky])){
-                            r = -1;
-                            y = 8;
-                            x = 8;
-                            check = true;
-                        }
-                    }
-                }
-            }
+            var capture = this.doMove(src,dst,r);
+            var check = this.otherSideInCheck();
             this.swapTurn();
             moveSound.play();
             if (capture){
