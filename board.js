@@ -295,8 +295,21 @@ class Board {
                 break;
             }
         }
-        this.cells[dst[1]][dst[0]].copy(this.cells[src[1]][src[0]]);
-        this.cells[src[1]][src[0]].type = EMPTY;
+        var srcCell = this.cells[src[1]][src[0]];
+        var dstCell = this.cells[dst[1]][dst[0]];
+        if (srcCell.type == PAWN){
+            if (srcCell.color == WHITE && dst[1] == 7){
+                dstCell.type = QUEEN;
+            } else if (srcCell.color == BLACK && dst[1] == 0){
+                dstCell.type = QUEEN;
+            } else {
+                dstCell.type = PAWN;
+            }
+            dstCell.color = srcCell.color;
+        } else {
+            dstCell.copy(srcCell);
+        }
+        srcCell.type = EMPTY;
         this.lastMove = new Move(src,dst);
         return capture;
     }
