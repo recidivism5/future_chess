@@ -45,6 +45,10 @@
 </div>
 
 <script>
+	function randint(max) {
+		return Math.floor(Math.random() * max);
+	}
+
 	async function main(){
 		document.addEventListener('contextmenu', event => event.preventDefault()); //disable right click context menu
 		var canvas = document.querySelector("#canvas");
@@ -93,7 +97,8 @@
 		var rook = await vao_from_obj("rook");
 		var selector = await vao_from_obj("selector");
 
-		var skybox = load_cubemap("leafless_trees");
+		var cubemaps = ["leafless_trees"];
+		var skybox = load_cubemap(cubemaps[randint(cubemaps.length)]);
 
 		var screenQuadVAO = gl.createVertexArray();
 		gl.bindVertexArray(screenQuadVAO);
@@ -118,51 +123,83 @@
 
 		//tweakables:
 		var cameraAngle = 0.0;
-		var mousePos = [0,0];
+		var ambient = 0.75;
+		var reflectivity = 0.5;
+		var whiteColor = [1.0,0.0,0.0,1.0];
+		var blackColor = [0.0,0.0,0.0,1.0];
+		var srcPos = null;
+		var dstPos = null;
+		var srcColor = [0.0,1.0,0.0,1.0];
+		var dstColor = [1.0,0.0,0.0,1.0];
+		/////////////////////////
+
+		var aspect;
+		var camPos;
+		var vp;
+		var invVP;
+		function update_camera(){
+			resizeCanvasToDisplaySize(gl.canvas);
+			gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+			aspect = gl.canvas.width/gl.canvas.height;
+			camPos = [7*Math.sin(cameraAngle)+4,7,7*Math.cos(cameraAngle)+4];
+			vp = mat4_mul(mat4_persp(0.45*Math.PI,aspect,0.01,2000.0),mat4_lookat(camPos,[4,0,4],[0,1,0]));
+			invVP = mat4_invert(vp);
+		}
+		update_camera();
+
+		function get_mouse_cell(mousePos){
+			var ndcMousePos = [2.0*(mousePos[0]/gl.canvas.width-0.5),2.0*(1.0-mousePos[1]/gl.canvas.height-0.5)];
+			var mouseRay = vec3_norm(mat4_mul_vec3(invVP,[ndcMousePos[0],ndcMousePos[1],1.0],1.0));
+			var boardPoint = vec3_add(camPos,vec3_scale(mouseRay,(1.0-camPos[1])/mouseRay[1]));
+			cell = [Math.floor(boardPoint[0]),Math.floor(boardPoint[2])];
+			if (
+				cell[0] >= 0 && cell[0] <= 7 && 
+				cell[1] >= 0 && cell[1] <= 7
+			){
+				return cell;
+			} else {
+				return null;
+			}
+		}
 		onmousemove = (event) => {
 			if (event.buttons === 2){
 				cameraAngle -= 0.001*event.movementX;
 			}
-			mousePos = [event.clientX,event.clientY];
+			dstPos = get_mouse_cell([event.clientX,event.clientY]);
 		};
-		var ambient = 0.75;
-		var reflectivity = 0.5;
-		var whiteColor = [1.0,1.0,1.0,1.0];
-		var blackColor = [0.0,0.0,0.0,1.0];
-		var selectorPos = [0,0];
-		var selectorColor = [1.0,0.0,0.0,1.0];
-		/////////////////////////
+		onmousedown = (event) => {
+			if (event.buttons === 1){
+				var dst = get_mouse_cell([event.clientX,event.clientY]);
+				if (srcPos){
+					var r = gameBoard.attemptMove(srcPos,dst);
+					if (r > 0){
+						if (r > 1){
+							captureSound.play();
+						} else {
+							moveSound.play();
+						}
+					} else if (r < 0){
+						checkSound.play();
+					}
+					srcPos = null;
+				} else {
+					srcPos = dst;
+				}
+			}
+		};
 	
 		requestAnimationFrame(drawScene);
 
 		function drawScene(now){
 			now *= 0.001; // convert to seconds
 
-			resizeCanvasToDisplaySize(gl.canvas);
-			gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-			var aspect = gl.canvas.width/gl.canvas.height;
+			update_camera();
 
 			gl.clearColor(1.0,0.0,0.0,1.0);
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
 
 			gl.enable(gl.DEPTH_TEST);
 			gl.enable(gl.CULL_FACE);
-
-			var camPos = [7*Math.sin(cameraAngle)+4,7,7*Math.cos(cameraAngle)+4];
-			var vp = mat4_mul(mat4_persp(0.45*Math.PI,aspect,0.01,2000.0),mat4_lookat(camPos,[4,0,4],[0,1,0]));
-			var invVP = mat4_invert(vp);
-
-			var ndcMousePos = [2.0*(mousePos[0]/gl.canvas.width-0.5),2.0*(1.0-mousePos[1]/gl.canvas.height-0.5)];
-			var mouseRay = vec3_norm(mat4_mul_vec3(invVP,[ndcMousePos[0],ndcMousePos[1],1.0],1.0));
-			var boardPoint = vec3_add(camPos,vec3_scale(mouseRay,(1.0-camPos[1])/mouseRay[1]));
-			selectorPos = [Math.floor(boardPoint[0]),Math.floor(boardPoint[2])];
-			var drawSelector = false;
-			if (
-				selectorPos[0] >= 0 && selectorPos[0] <= 7 && 
-				selectorPos[1] >= 0 && selectorPos[1] <= 7
-			){
-				drawSelector = true;
-			}
 
 			gl.depthFunc(gl.LESS); // use the default depth test
 			function drawPieces(shader){
@@ -174,9 +211,15 @@
 				gl.bindTexture(gl.TEXTURE_CUBE_MAP,skybox);
 				gl.uniformMatrix4fv(shader.uVP,false,new Float32Array(vp.flat()));
 
-				if (drawSelector){
-					gl.uniform3fv(shader.uTranslation,new Float32Array([0.5+selectorPos[0],1.0,0.5+selectorPos[1]]));
-					gl.uniform4fv(shader.uColor,new Float32Array(selectorColor));
+				if (srcPos){
+					gl.uniform3fv(shader.uTranslation,new Float32Array([0.5+srcPos[0],1.0,0.5+srcPos[1]]));
+					gl.uniform4fv(shader.uColor,new Float32Array(srcColor));
+					gl.bindVertexArray(selector);
+					gl.drawArrays(gl.TRIANGLES,0,selector.vertexCount);
+				}
+				if (dstPos && (!srcPos || dstPos[0] !== srcPos[0] || dstPos[1] !== srcPos[1])){
+					gl.uniform3fv(shader.uTranslation,new Float32Array([0.5+dstPos[0],1.0,0.5+dstPos[1]]));
+					gl.uniform4fv(shader.uColor,new Float32Array(dstColor));
 					gl.bindVertexArray(selector);
 					gl.drawArrays(gl.TRIANGLES,0,selector.vertexCount);
 				}
@@ -186,39 +229,41 @@
 						gl.uniform3fv(shader.uTranslation,new Float32Array([0.5+x,1.0,0.5+z]));
 						
 						var cell = gameBoard.cells[z][x];
-						switch (cell.color){
-							case "white":
-								gl.uniform4fv(shader.uColor,new Float32Array(whiteColor));
-								break;
-							case "black":
-								gl.uniform4fv(shader.uColor,new Float32Array(blackColor));
-								break;
-						}
-						switch (cell.type){
-							case "bishop":
-								gl.bindVertexArray(bishop);
-								gl.drawArrays(gl.TRIANGLES,0,bishop.vertexCount);
-								break;
-							case "king":
-								gl.bindVertexArray(king);
-								gl.drawArrays(gl.TRIANGLES,0,king.vertexCount);
-								break;
-							case "knight":
-								gl.bindVertexArray(knight);
-								gl.drawArrays(gl.TRIANGLES,0,knight.vertexCount);
-								break;
-							case "pawn":
-								gl.bindVertexArray(pawn);
-								gl.drawArrays(gl.TRIANGLES,0,pawn.vertexCount);
-								break;
-							case "queen":
-								gl.bindVertexArray(queen);
-								gl.drawArrays(gl.TRIANGLES,0,queen.vertexCount);
-								break;
-							case "rook":
-								gl.bindVertexArray(rook);
-								gl.drawArrays(gl.TRIANGLES,0,rook.vertexCount);
-								break;
+						if (cell){
+							switch (cell.color){
+								case "white":
+									gl.uniform4fv(shader.uColor,new Float32Array(whiteColor));
+									break;
+								case "black":
+									gl.uniform4fv(shader.uColor,new Float32Array(blackColor));
+									break;
+							}
+							switch (cell.type){
+								case "bishop":
+									gl.bindVertexArray(bishop);
+									gl.drawArrays(gl.TRIANGLES,0,bishop.vertexCount);
+									break;
+								case "king":
+									gl.bindVertexArray(king);
+									gl.drawArrays(gl.TRIANGLES,0,king.vertexCount);
+									break;
+								case "knight":
+									gl.bindVertexArray(knight);
+									gl.drawArrays(gl.TRIANGLES,0,knight.vertexCount);
+									break;
+								case "pawn":
+									gl.bindVertexArray(pawn);
+									gl.drawArrays(gl.TRIANGLES,0,pawn.vertexCount);
+									break;
+								case "queen":
+									gl.bindVertexArray(queen);
+									gl.drawArrays(gl.TRIANGLES,0,queen.vertexCount);
+									break;
+								case "rook":
+									gl.bindVertexArray(rook);
+									gl.drawArrays(gl.TRIANGLES,0,rook.vertexCount);
+									break;
+							}
 						}
 					}
 				}
