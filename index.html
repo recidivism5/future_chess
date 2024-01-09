@@ -36,12 +36,13 @@
 
 <script src="board.js"></script>
 <script src="linalg.js"></script>
+<script src="room.js"></script>
 
 <canvas id="canvas"></canvas>
 
 <div id="overlay">
 	<div style="font-size:120px;">future chess</div>
-	<div class="button">copy room link</div><div style="padding-top:4px;">send to a friend</div>
+	<div id="copyRoomLinkButton" class="button">copy room link</div><div style="padding-top:4px;">send to a friend</div>
 </div>
 
 <script>
@@ -119,13 +120,19 @@
 		gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
 		gl.enableVertexAttribArray(0);
 
-		gameBoard = new Board();
+		var gameBoard = new Board();
+
+		var room = new Room();
+		document.getElementById("copyRoomLinkButton").addEventListener("mousedown",(event) => {
+			console.log(room.getURL());
+			navigator.clipboard.writeText(room.getURL());
+		});
 
 		//tweakables:
 		var cameraAngle = 0.0;
 		var ambient = 0.75;
 		var reflectivity = 0.5;
-		var whiteColor = [1.0,1.0,1.0,1.0];
+		var whiteColor = [0.8,0.8,0.8,1.0];
 		var blackColor = [0.0,0.0,0.0,1.0];
 		var srcPos = null;
 		var dstPos = null;
