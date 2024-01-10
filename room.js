@@ -84,15 +84,14 @@ class Room {
 			}
 		};
 	}
-	setDataChannel(dataChannel) {
+	setDataChannel(dataChannel){
         this.dataChannel = dataChannel;
         this.dataChannel.binaryType = "arraybuffer";
         this.dataChannel.onopen = (e) => {
-			console.log("dataChannel opened.");
+			document.getElementById("overlay").innerHTML = "";
         };
         this.dataChannel.onmessage = (e) => {
-			console.log("Received data.");
-            //this.emit("data", msgpack_lite__WEBPACK_IMPORTED_MODULE_2__.decode(new Uint8Array(e.data)));
+			console.log(JSON.parse(e.data));
         };
         this.dataChannel.onclose = (e) => {
             this.close();

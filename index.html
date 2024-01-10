@@ -15,7 +15,7 @@
 		user-select: none;
 		color:white;
 		position: absolute; 
-		left: 50%;
+		left: 20%;
 		top: 15%;
 	}
 
@@ -36,12 +36,12 @@
 
 <script src="board.js"></script>
 <script src="linalg.js"></script>
-<script src="room.js"></script>
 
 <canvas id="canvas"></canvas>
 
 <div id="overlay">
-	<div style="font-size:120px;">future chess</div>
+	<div id="title" style="font-size:120px;">future chess</div>
+	<hr><br>
 	<div id="copyRoomLinkButton" class="button">copy room link</div><div style="padding-top:4px;">send to a friend</div>
 </div>
 
@@ -122,14 +122,9 @@
 
 		var gameBoard = new Board();
 
-		var room = new Room();
-		document.getElementById("copyRoomLinkButton").addEventListener("mousedown",(event) => {
-			console.log(room.getURL());
-			navigator.clipboard.writeText(room.getURL());
-		});
-
 		//tweakables:
 		var cameraAngle = 0.0;
+		var cameraHeight = 5;
 		var ambient = 0.75;
 		var reflectivity = 0.5;
 		var whiteColor = [0.8,0.8,0.8,1.0];
@@ -140,6 +135,142 @@
 		var dstColor = [1.0,0.0,0.0,1.0];
 		/////////////////////////
 
+		class Room {
+			constructor(){
+				this.peerConnection = null;
+				this.dataChannel = null;
+				this.clientID = null;
+				this.peerID = null;
+				this.rand = null;
+				this.side = -1;
+				this.ws = new WebSocket("wss://netplayjs.varunramesh.net");
+				this.ws.onmessage = (message) => {
+					var msg = JSON.parse(message.data);
+					if (msg.kind === "registration-success"){
+						this.clientID = msg.clientID;
+						this.iceServers = msg.iceServers;
+					} else if (msg.kind === "peer-message"){
+						if (!this.peerConnection){
+							this.initPC();
+							this.peerID = msg.sourceID;
+							this.peerConnection.onicecandidate = (event) => {
+								if (event.candidate) {
+									this.signal({
+										kind: "send-message",
+										type: "candidate",
+										destinationID: msg.sourceID,
+										payload: event.candidate,
+									});
+								}
+							};
+							this.peerConnection.ondatachannel = (event) => {
+								this.setDataChannel(event.channel);
+							};
+						}
+						if (msg.type === "offer"){
+							this.peerConnection.setRemoteDescription(msg.payload)
+							.then(() => this.peerConnection.createAnswer()
+							.then((answer) => this.peerConnection.setLocalDescription(answer)
+							.then(() => this.signal({
+								kind: "send-message",
+								type: "answer",
+								destinationID: this.peerID,
+								payload: answer,
+							}))));//kek
+						}
+						else if (msg.type === "answer"){
+							console.log(msg);
+							this.peerConnection.setRemoteDescription(msg.payload);
+						}
+						else if (msg.type === "candidate"){
+							console.log(msg);
+							this.peerConnection.addIceCandidate(msg.payload);
+						}
+					}
+					if (!this.peerConnection){
+						var surl = window.location.href.split("#");
+						if (surl.length == 2){
+							this.peerID = surl[1];
+							this.initPC();
+							this.peerConnection.onnegotiationneeded = (ev) => {
+								this.peerConnection.createOffer()
+								.then((offer) => this.peerConnection.setLocalDescription(offer)
+								.then(() => 
+									this.signal({
+										kind: "send-message",
+										type: "offer",
+										destinationID: this.peerID,
+										payload: this.peerConnection.localDescription,
+									})
+								)
+								.catch((err) => 
+									console.error(err)
+								));
+							};
+							this.setDataChannel(this.peerConnection.createDataChannel("data", {ordered: true}));
+						}
+					}
+				};
+			}
+			initPC(){
+				this.peerConnection = new RTCPeerConnection({iceServers: this.iceServers});
+				window.addEventListener("beforeunload", (e) => {
+					this.close();
+				});
+				this.peerConnection.onconnectionstatechange = (event) => {
+					if (this.peerConnection.connectionState === "disconnected") {
+						this.close();
+					}
+				};
+			}
+			setDataChannel(dataChannel){
+				this.dataChannel = dataChannel;
+				this.dataChannel.binaryType = "arraybuffer";
+				this.dataChannel.onopen = (e) => {
+					document.getElementById("overlay").innerHTML = "";
+					this.rand = Math.random();
+					this.send({rand:this.rand});
+				};
+				this.dataChannel.onmessage = (e) => {
+					var r = JSON.parse(e.data);
+					if (r.rand){
+						if (r.rand > this.rand){
+							this.side = BLACK;
+							cameraAngle = 0.0;
+						} else {
+							this.side = WHITE;
+							cameraAngle = Math.PI;
+						}
+						cameraHeight = 7;
+					} else if (r.move){
+						gameBoard.attemptMove(r.move.src,r.move.dst);
+					}
+				};
+				this.dataChannel.onclose = (e) => {
+					this.close();
+				};
+			}
+			signal(msg){
+				this.ws.send(JSON.stringify(msg));
+			}
+			close(){
+				this.peerConnection.close();
+				if (this.dataChannel){
+					this.dataChannel.close();
+				}
+			}
+			getURL(){
+				return window.location.href + "#" + this.clientID;
+			}
+			send(obj){
+				this.dataChannel.send(JSON.stringify(obj));
+			}
+		};
+		var room = new Room();
+		document.getElementById("copyRoomLinkButton").addEventListener("mousedown",(event) => {
+			navigator.clipboard.writeText(room.getURL());
+		});
+
 		var aspect;
 		var camPos;
 		var vp;
@@ -148,7 +279,7 @@
 			resizeCanvasToDisplaySize(gl.canvas);
 			gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 			aspect = gl.canvas.width/gl.canvas.height;
-			camPos = [7*Math.sin(cameraAngle)+4,7,7*Math.cos(cameraAngle)+4];
+			camPos = [8*Math.sin(cameraAngle)+4,cameraHeight,8*Math.cos(cameraAngle)+4];
 			vp = mat4_mul(mat4_persp(0.45*Math.PI,aspect,0.01,2000.0),mat4_lookat(camPos,[4,0,4],[0,1,0]));
 			invVP = mat4_invert(vp);
 		}
@@ -182,6 +313,7 @@
 				}
 				if (srcPos){
 					gameBoard.attemptMove(srcPos,dst);
+					room.send({move:{src:srcPos,dst:dst}});
 					srcPos = null;
 				} else if (gameBoard.cells[dst[1]][dst[0]].type && gameBoard.cells[dst[1]][dst[0]].color == gameBoard.toMove){
 					srcPos = dst;
@@ -193,6 +325,10 @@
 
 		function drawScene(now){
 			now *= 0.001; // convert to seconds
+
+			if (room.side < 0){
+				cameraAngle = now;
+			}
 
 			update_camera();
 
